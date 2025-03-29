@@ -1,147 +1,142 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { useApi } from "../hooks/use-api"
-import { useBlockchain } from "../hooks/use-blockchain"
-import { useFeatures } from "../hooks/use-features"
+import { createContext, useContext, useState, useEffect } from "react"
+import { useToast } from "@/hooks/use-toast"
 
-// Define the context type
-interface AppContextType {
-  user: any | null
-  isAuthenticated: boolean
-  isLoading: boolean
-  error: Error | null
-  login: (email: string, password: string) => Promise<void>
-  register: (data: any) => Promise<void>
-  logout: () => void
-  wallet: {
-    address: string | null
-    isConnected: boolean
-    connect: () => Promise<void>
-    disconnect: () => void
-  }
+interface User {
+  id: string
+  name: string
+  email: string
+  avatar?: string
+  role: string
 }
 
-// Create the context
-const AppContext = createContext<AppContextType | undefined>(undefined)
+interface AuthContextType {
+  isAuthenticated: boolean
+  isLoading: boolean
+  user: User | null
+  login: (email: string, password: string) => Promise<void>
+  register: (userData: any) => Promise<void>
+  logout: () => void
+}
 
-// Provider component
-export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { api, loading: apiLoading, error: apiError } = useApi()
-  const { account, connected, connectWallet, disconnectWallet, loading: web3Loading } = useBlockchain()
-  const { isBlockchainEnabled } = useFeatures()
+const AppContext = createContext<AuthContextType>({
+  isAuthenticated: false,
+  isLoading: true,
+  user: null,
+  login: async () => {},
+  register: async () => {},
+  logout: () => {},
+})
 
-  const [user, setUser] = useState<any | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+export const useApp = () => useContext(AppContext)
 
-  // Check if user is authenticated on mount
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
+  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [user, setUser] = useState<User | null>(null)
+  const { toast } = useToast()
+
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const userData = await api.getCurrentUser()
-        setUser(userData)
-      } catch (err) {
-        // Clear token if authentication fails
-        localStorage.removeItem("token")
-      } finally {
-        setIsLoading(false)
-      }
+    // Check if user is logged in
+    const token = localStorage.getItem("token")
+    if (token) {
+      // In a real app, you would validate the token with your backend
+      setIsAuthenticated(true)
+      // Mock user data
+      setUser({
+        id: "1",
+        name: "John Doe",
+        email: "john@example.com",
+        role: "lawyer",
+      })
     }
+    setIsLoading(false)
+  }, [])
 
-    checkAuth()
-  }, [api])
-
-  // Login function
   const login = async (email: string, password: string) => {
     setIsLoading(true)
-    setError(null)
-
     try {
-      const { user } = await api.login(email, password)
-      setUser(user)
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error("Login failed")
-      setError(error)
+      // In a real app, you would make an API call to your backend
+      // This is just a mock implementation
+      if (email && password) {
+        // Mock successful login
+        const mockUser = {
+          id: "1",
+          name: "John Doe",
+          email,
+          role: "lawyer",
+        }
+
+        // Store token in localStorage
+        localStorage.setItem("token", "mock-jwt-token")
+
+        setUser(mockUser)
+        setIsAuthenticated(true)
+
+        toast({
+          title: "Login successful",
+          description: "Welcome back to Haki Platform!",
+        })
+      } else {
+        throw new Error("Invalid credentials")
+      }
+    } catch (error) {
+      console.error("Login error:", error)
+      toast({
+        title: "Login failed",
+        description: "Invalid email or password",
+        variant: "destructive",
+      })
       throw error
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Register function
-  const register = async (data: any) => {
+  const register = async (userData: any) => {
     setIsLoading(true)
-    setError(null)
-
     try {
-      const { user } = await api.register(data)
-      setUser(user)
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error("Registration failed")
-      setError(error)
+      // In a real app, you would make an API call to your backend
+      // This is just a mock implementation
+      if (userData.email && userData.password) {
+        // Mock successful registration
+        toast({
+          title: "Registration successful",
+          description: "Your account has been created",
+        })
+        return
+      } else {
+        throw new Error("Invalid user data")
+      }
+    } catch (error) {
+      console.error("Registration error:", error)
+      toast({
+        title: "Registration failed",
+        description: "Could not create your account",
+        variant: "destructive",
+      })
       throw error
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Logout function
   const logout = () => {
     localStorage.removeItem("token")
     setUser(null)
-
-    // Also disconnect wallet if connected
-    if (connected) {
-      disconnectWallet()
-    }
+    setIsAuthenticated(false)
+    toast({
+      title: "Logged out",
+      description: "You have been logged out successfully",
+    })
   }
 
-  // Connect wallet
-  const connectUserWallet = async () => {
-    try {
-      const { account } = await connectWallet()
-
-      if (account && user) {
-        // Update user's wallet address in backend
-        await api.connectWallet(account)
-      }
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error("Failed to connect wallet")
-      setError(error)
-      throw error
-    }
-  }
-
-  // Context value
-  const value: AppContextType = {
-    user,
-    isAuthenticated: !!user,
-    isLoading: isLoading || apiLoading || web3Loading,
-    error: error || apiError,
-    login,
-    register,
-    logout,
-    wallet: {
-      address: account,
-      isConnected: connected,
-      connect: connectUserWallet,
-      disconnect: disconnectWallet,
-    },
-  }
-
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>
-}
-
-// Custom hook to use the context
-export const useApp = () => {
-  const context = useContext(AppContext)
-
-  if (context === undefined) {
-    throw new Error("useApp must be used within an AppProvider")
-  }
-
-  return context
+  return (
+    <AppContext.Provider value={{ isAuthenticated, isLoading, user, login, register, logout }}>
+      {children}
+    </AppContext.Provider>
+  )
 }
 

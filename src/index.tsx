@@ -1,21 +1,20 @@
 import React from "react"
-import ReactDOM from "react-dom"
+import ReactDOM from "react-dom/client"
 import { BrowserRouter } from "react-router-dom"
 import App from "./App"
+import { AppProvider } from "./context/app-context"
 import { ThemeProvider } from "./components/theme-provider"
-import { AuthProvider } from "./contexts/auth-context"
 import "./index.css"
 
-ReactDOM.render(
+ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <BrowserRouter>
-      <ThemeProvider>
-        <AuthProvider>
+      <AppProvider>
+        <ThemeProvider defaultTheme="dark" storageKey="haki-theme">
           <App />
-        </AuthProvider>
-      </ThemeProvider>
+        </ThemeProvider>
+      </AppProvider>
     </BrowserRouter>
   </React.StrictMode>,
-  document.getElementById("root"),
 )
 
