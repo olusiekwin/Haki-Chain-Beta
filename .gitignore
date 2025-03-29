@@ -1,0 +1,57 @@
+# Ignore node_modules and build artifacts
+node_modules/
+dist/
+build/
+coverage/
+
+# Ignore Python virtual environments
+venv/
+env/
+.venv/
+
+# Ignore environment variables
+.env
+.env.local
+.env.*.local
+
+# Ignore log files and temporary files
+*.log
+*.tmp
+*.temp
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Ignore backend-specific files
+*.pyc
+__pycache__/
+*.sqlite3
+*.db
+
+# Ignore frontend-specific files
+public/assets/
+src/**/*.js.map
+src/**/*.ts.map
+
+# Ignore lock files (optional, depending on your workflow)
+# Uncomment the lines below if you want to ignore lock files
+# package-lock.json
+# yarn.lock
+# Pipfile.lock
+
+# Ignore uploaded or generated files
+uploads/
+generated/
+
+# Ignore IDE/editor-specific files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Ignore any other custom build directories
+out/
+.cache/
+.temp/

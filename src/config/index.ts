@@ -1,26 +1,52 @@
-// Environment variables and configuration
-const config = {
-  // API URL from environment variable with fallback
-  apiUrl: process.env.REACT_APP_API_URL || "http://localhost:5000",
+/**
+ * Application Configuration
+ *
+ * Central configuration for the entire application.
+ * Environment variables are loaded and processed here.
+ */
 
-  // Hedera network from environment variable with fallback to testnet
-  hederaNetwork: process.env.HEDERA_NETWORK || "testnet",
+// Load environment variables
+const env = (key: string, defaultValue?: string): string => {
+  const value = process.env[`REACT_APP_${key}`] || defaultValue
+  if (value === undefined) {
+    console.warn(`Environment variable ${key} is not defined`)
+    return ""
+  }
+  return value
+}
 
-  // Feature flags
-  features: {
-    // Enable/disable blockchain features
-    blockchain: process.env.FEATURE_BLOCKCHAIN === "true",
+// Feature flags
+const features = {
+  blockchain: env("FEATURE_BLOCKCHAIN", "true") === "true",
+  ai: env("FEATURE_AI_ASSISTANT", "false") === "true",
+}
 
-    // Enable/disable AI assistant
-    aiAssistant: process.env.FEATURE_AI_ASSISTANT === "true",
-  },
+// API configuration
+const apiConfig = {
+  url: env("API_URL", "http://localhost:8000/api"),
+  timeout: Number.parseInt(env("API_TIMEOUT", "30000")),
+}
 
-  // Hedera settings
-  hedera: {
-    accountId: process.env.HEDERA_ACCOUNT_ID || "0.0.5785491",
-    privateKey: process.env.HEDERA_PRIVATE_KEY || "0x62e7a0692acb84a12229640f812af0311718c63a3a90cbd3d015254c2c295998",
+// Blockchain configuration
+const blockchainConfig = {
+  network: process.env.HEDERA_NETWORK || "testnet",
+  accountId: process.env.HEDERA_ACCOUNT_ID || "",
+  contracts: {
+    token: process.env.REACT_APP_TOKEN_CONTRACT_ADDRESS || "",
+    bounty: process.env.REACT_APP_BOUNTY_CONTRACT_ADDRESS || "",
+    escrow: process.env.REACT_APP_ESCROW_CONTRACT_ADDRESS || "",
+    reputation: process.env.REACT_APP_REPUTATION_CONTRACT_ADDRESS || "",
+    multisig: process.env.REACT_APP_MULTISIG_CONTRACT_ADDRESS || "",
   },
 }
 
-export default config
+// Application configuration
+export const config = {
+  appName: "Haki Platform",
+  apiUrl: apiConfig.url,
+  apiTimeout: apiConfig.timeout,
+  features,
+  blockchain: blockchainConfig,
+  defaultPageSize: 10,
+}
 

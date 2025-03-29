@@ -1,20 +1,28 @@
-import React from "react"
+"use client"
+
+import React, { useEffect } from "react"
 import { Routes, Route, Navigate } from "react-router-dom"
+import { ThemeProvider } from "./components/theme-provider"
 import { useApp } from "./context/app-context"
+import config from "./config"
 
 // Import your page components
 // These are placeholders - replace with your actual components
-const LoginPage = React.lazy(() => import("./pages/login-page"))
-const RegisterPage = React.lazy(() => import("./pages/register-page"))
-const DashboardPage = React.lazy(() => import("./pages/dashboard-page"))
-const WalletPage = React.lazy(() => import("./pages/wallet-page"))
-const BountyDiscoveryPage = React.lazy(() => import("./pages/bounty-discovery-page"))
+const LoginPage = React.lazy(() => import("./pages/auth/login"))
+const RegisterPage = React.lazy(() => import("./pages/auth/register"))
+const DashboardPage = React.lazy(() => import("./pages/dashboard"))
+const WalletPage = React.lazy(() => import("./pages/wallet"))
+const BountyDiscoveryPage = React.lazy(() => import("./pages/bounties"))
 const TokenMarketplacePage = React.lazy(() => import("./pages/token-marketplace-page"))
+const BountyDetail = React.lazy(() => import("./pages/bounty-detail"))
+const Profile = React.lazy(() => import("./pages/profile"))
+const Messages = React.lazy(() => import("./pages/messages"))
 
 // Layout components
-import MainLayout from "./components/layout/main-layout"
+import MainLayout from "./components/layout"
 import AuthLayout from "./components/layout/auth-layout"
 import LoadingSpinner from "./components/common/loading-spinner"
+import { Toaster } from "./components/ui/toaster"
 
 // Protected route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -32,55 +40,86 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 }
 
 const App: React.FC = () => {
+  useEffect(() => {
+    document.title = config.appName
+  }, [])
+
   return (
-    <React.Suspense fallback={<LoadingSpinner />}>
-      <Routes>
-        {/* Auth routes */}
-        <Route element={<AuthLayout />}>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-        </Route>
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+      <React.Suspense fallback={<LoadingSpinner />}>
+        <Routes>
+          {/* Auth routes */}
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+          </Route>
 
-        {/* Protected routes */}
-        <Route element={<MainLayout />}>
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/wallet"
-            element={
-              <ProtectedRoute>
-                <WalletPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/bounties"
-            element={
-              <ProtectedRoute>
-                <BountyDiscoveryPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/marketplace"
-            element={
-              <ProtectedRoute>
-                <TokenMarketplacePage />
-              </ProtectedRoute>
-            }
-          />
-        </Route>
+          {/* Protected routes */}
+          <Route element={<MainLayout />}>
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/wallet"
+              element={
+                <ProtectedRoute>
+                  <WalletPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/bounties"
+              element={
+                <ProtectedRoute>
+                  <BountyDiscoveryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/marketplace"
+              element={
+                <ProtectedRoute>
+                  <TokenMarketplacePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/bounties/:id"
+              element={
+                <ProtectedRoute>
+                  <BountyDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/messages"
+              element={
+                <ProtectedRoute>
+                  <Messages />
+                </ProtectedRoute>
+              }
+            />
+          </Route>
 
-        {/* Fallback route */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </React.Suspense>
+          {/* Fallback route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </React.Suspense>
+      <Toaster />
+    </ThemeProvider>
   )
 }
 

@@ -1,19 +1,21 @@
 import React from "react"
-import ReactDOM from "react-dom/client"
+import ReactDOM from "react-dom"
 import { BrowserRouter } from "react-router-dom"
 import App from "./App"
-import { AppProvider } from "./context/app-context"
-import "./styles/index.css"
+import { ThemeProvider } from "./components/theme-provider"
+import { AuthProvider } from "./contexts/auth-context"
+import "./index.css"
 
-const root = ReactDOM.createRoot(document.getElementById("root") as HTMLElement)
-
-root.render(
+ReactDOM.render(
   <React.StrictMode>
     <BrowserRouter>
-      <AppProvider>
-        <App />
-      </AppProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>,
+  document.getElementById("root"),
 )
 

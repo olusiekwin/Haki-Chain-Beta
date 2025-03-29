@@ -5,7 +5,7 @@ import { Link, useLocation } from "react-router-dom"
 import { Button } from "./ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import { useAuth } from "../contexts/auth-context"
-import { EnvironmentIndicator } from "./environment-indicator"
+import EnvironmentIndicator from "./environment-indicator"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -82,9 +82,7 @@ export function Navbar() {
   return (
     <header
       className={`sticky top-0 z-50 w-full transition-all duration-300 ${
-        isScrolled
-          ? "bg-background/80 backdrop-blur-md border-b shadow-sm"
-          : "bg-transparent"
+        isScrolled ? "bg-background/80 backdrop-blur-md border-b shadow-sm" : "bg-transparent"
       }`}
     >
       <div className="container mx-auto px-4">
@@ -102,9 +100,7 @@ export function Navbar() {
                   key={link.name}
                   to={link.href}
                   className={`text-sm font-medium transition-colors hover:text-primary ${
-                    location.pathname === link.href
-                      ? "text-primary"
-                      : "text-muted-foreground"
+                    location.pathname === link.href ? "text-primary" : "text-muted-foreground"
                   }`}
                 >
                   {link.name}
@@ -131,9 +127,7 @@ export function Navbar() {
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
                         <p className="text-sm font-medium leading-none">{user.name}</p>
-                        <p className="text-xs leading-none text-muted-foreground">
-                          {user.email}
-                        </p>
+                        <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
@@ -148,9 +142,7 @@ export function Navbar() {
                     <DropdownMenuItem asChild>
                       <Link to="/profile" className="flex items-center">
                         <User className="h-4 w-4 mr-2" />
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>   Profile
+                        Profile
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
@@ -172,7 +164,10 @@ export function Navbar() {
                 <Button variant="ghost" asChild>
                   <Link to="/login">Login</Link>
                 </Button>
-                <Button asChild className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700">
+                <Button
+                  asChild
+                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                >
                   <Link to="/register">Register</Link>
                 </Button>
               </div>
@@ -196,9 +191,7 @@ export function Navbar() {
                       </span>
                     </div>
                   </SheetTitle>
-                  <SheetDescription>
-                    Legal bounties on the blockchain
-                  </SheetDescription>
+                  <SheetDescription>Legal bounties on the blockchain</SheetDescription>
                 </SheetHeader>
                 <div className="py-4">
                   <nav className="flex flex-col space-y-4">
@@ -207,9 +200,7 @@ export function Navbar() {
                         <Link
                           to={link.href}
                           className={`flex items-center px-2 py-1 rounded-md transition-colors hover:bg-primary/10 ${
-                            location.pathname === link.href
-                              ? "text-primary font-medium"
-                              : "text-muted-foreground"
+                            location.pathname === link.href ? "text-primary font-medium" : "text-muted-foreground"
                           }`}
                           onClick={() => setIsMobileMenuOpen(false)}
                         >
@@ -255,8 +246,8 @@ export function Navbar() {
                         <div className="h-px bg-border my-2" />
                         <button
                           onClick={() => {
-                            logout();
-                            setIsMobileMenuOpen(false);
+                            logout()
+                            setIsMobileMenuOpen(false)
                           }}
                           className="flex items-center px-2 py-1 rounded-md transition-colors hover:bg-red-100 dark:hover:bg-red-900/20 text-red-500"
                         >
@@ -297,7 +288,9 @@ export function Navbar() {
           </div>
         </div>
       </div>
-  </header>
+    </header>
   )
 }
+
+export default Navbar
 
