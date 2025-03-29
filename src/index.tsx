@@ -1,19 +1,21 @@
 import React from "react"
 import ReactDOM from "react-dom/client"
 import { BrowserRouter } from "react-router-dom"
+import "./styles/globals.css"
 import App from "./App"
-import { AppProvider } from "./context/app-context"
-import { ThemeProvider } from "./components/theme-provider"
-import "./index.css"
+import { AppProvider } from "./context/AppContext"
+import { ThemeProvider } from "./components/theme/ThemeProvider"
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+const root = ReactDOM.createRoot(document.getElementById("root") as HTMLElement)
+
+root.render(
   <React.StrictMode>
     <BrowserRouter>
-      <AppProvider>
-        <ThemeProvider defaultTheme="dark" storageKey="haki-theme">
+      <ThemeProvider defaultTheme="light" storageKey="hakichain-theme">
+        <AppProvider>
           <App />
-        </ThemeProvider>
-      </AppProvider>
+        </AppProvider>
+      </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>,
 )

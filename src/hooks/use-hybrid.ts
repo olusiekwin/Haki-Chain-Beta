@@ -1,146 +1,133 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import hybridService from "../services/hybrid-service"
 import { useApp } from "../context/app-context"
+import hybridService from "../services/hybrid-service"
 
-export function useHybrid() {
-  const { wallet, isAuthenticated } = useApp()
+export const useHybrid = () => {
+  const { token } = useApp()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
-  // Create a bounty in both systems
-  const createBounty = useCallback(
-    async (bountyData: any) => {
-      if (!isAuthenticated) {
-        throw new Error("User must be authenticated")
-      }
-
-      setIsLoading(true)
-      setError(null)
-
-      try {
-        const result = await hybridService.createBounty(bountyData, wallet.address || "")
-        return result
-      } catch (err) {
-        const error = err instanceof Error ? err : new Error("Failed to create bounty")
-        setError(error)
-        throw error
-      } finally {
-        setIsLoading(false)
-      }
-    },
-    [isAuthenticated, wallet.address],
-  )
-
   // Link wallet to user account
   const linkWallet = useCallback(async () => {
-    if (!isAuthenticated) {
-      throw new Error("User must be authenticated")
-    }
-
-    if (!wallet.address) {
-      throw new Error("Wallet must be connected")
+    if (!token) {
+      throw new Error("You must be logged in to link your wallet")
     }
 
     setIsLoading(true)
     setError(null)
 
     try {
-      const result = await hybridService.linkWalletToAccount(wallet.address)
-      return result
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error("Failed to link wallet")
-      setError(error)
-      throw error
+      const result = await hybridService.linkWallet(token)
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to link wallet")
+      }
+
+      return true
+    } catch (err: any) {
+      setError(err)
+      throw err
     } finally {
       setIsLoading(false)
     }
-  }, [isAuthenticated, wallet.address])
+  }, [token])
 
-  // Complete a bounty in both systems
-  const completeBounty = useCallback(
-    async (bountyId: string) => {
-      if (!isAuthenticated) {
-        throw new Error("User must be authenticated")
+  // Create a bounty (both on-chain and off-chain)
+  const createBounty = useCallback(
+    async (bountyData: { title: string; description: string; reward: string }) => {
+      if (!token) {
+        throw new Error("You must be logged in to create a bounty")
       }
 
       setIsLoading(true)
       setError(null)
 
       try {
-        const result = await hybridService.completeBounty(bountyId, wallet.address || "")
-        return result
-      } catch (err) {
-        const error = err instanceof Error ? err : new Error("Failed to complete bounty")
-        setError(error)
-        throw error
+        const result = await hybridService.createBounty(token, bountyData)
+
+        if (!result.success) {
+          throw new Error(result.error || "Failed to create bounty")
+        }
+
+        return { bountyId: result.bountyId, txHash: result.txHash }
+      } catch (err: any) {
+        setError(err)
+        throw err
       } finally {
         setIsLoading(false)
       }
     },
-    [isAuthenticated, wallet.address],
+    [token],
   )
 
-  // Transfer tokens
-  const transferTokens = useCallback(
-    async (toAddress: string, amount: string) => {
-      if (!isAuthenticated) {
-        throw new Error("User must be authenticated")
-      }
-
-      if (!wallet.address) {
-        throw new Error("Wallet must be connected")
+  // Create a marketplace listing (both on-chain and off-chain)
+  const createMarketplaceListing = useCallback(
+    async (itemData: { title: string; description: string; price: string; file: File }) => {
+      if (!token) {
+        throw new Error("You must be logged in to create a marketplace listing")
       }
 
       setIsLoading(true)
       setError(null)
 
       try {
-        const result = await hybridService.transferTokens(toAddress, amount, wallet.address)
-        return result
-      } catch (err) {
-        const error = err instanceof Error ? err : new Error("Failed to transfer tokens")
-        setError(error)
-        throw error
+        const result = await hybridService.createMarketplaceListing(token, itemData)
+
+        if (!result.success) {
+          throw new Error(result.error || "Failed to create marketplace listing")
+        }
+
+        return { itemId: result.itemId, txHash: result.txHash }
+      } catch (err: any) {
+        setError(err)
+        throw err
       } finally {
         setIsLoading(false)
       }
     },
-    [isAuthenticated, wallet.address],
+    [token],
   )
 
-  // Sync blockchain data with Django
-  const syncBlockchainData = useCallback(async () => {
-    if (!isAuthenticated) {
-      throw new Error("User must be authenticated")
-    }
-
-    if (!wallet.address) {
-      throw new Error("Wallet must be connected")
-    }
-
+  // Get token balance for current user
+  const getTokenBalance = useCallback(async () => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const result = await hybridService.syncBlockchainData(wallet.address)
-      return result
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error("Failed to sync blockchain data")
-      setError(error)
-      throw error
+      const result = await hybridService.getTokenBalance()
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to get token balance")
+      }
+
+      return result.balance
+    } catch (err: any) {
+      setError(err)
+      throw err
     } finally {
       setIsLoading(false)
     }
-  }, [isAuthenticated, wallet.address])
+  }, [])
+
+  // Check if blockchain features are enabled
+  const isBlockchainEnabled = useCallback(() => {
+    return hybridService.isBlockchainEnabled()
+  }, [])
+
+  // Check if AI assistant features are enabled
+  const isAiAssistantEnabled = useCallback(() => {
+    return hybridService.isAiAssistantEnabled()
+  }, [])
 
   return {
-    createBounty,
     linkWallet,
-    completeBounty,
-    transferTokens,
-    syncBlockchainData,
+    createBounty,
+    createMarketplaceListing,
+    getTokenBalance,
+    isBlockchainEnabled,
+    isAiAssistantEnabled,
     isLoading,
     error,
   }

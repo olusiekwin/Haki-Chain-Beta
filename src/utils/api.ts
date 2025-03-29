@@ -1,7 +1,7 @@
 import axios from "axios"
 import { config } from "./config"
 
-// Create an axios instance with default config
+// Create axios instance with default config
 const api = axios.create({
   baseURL: config.apiUrl,
   headers: {
@@ -21,15 +21,22 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 )
 
-// Response interceptor for handling errors
+// Response interceptor for handling common errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Handle 401 Unauthorized errors
+    // Handle 401 Unauthorized errors (token expired)
     if (error.response && error.response.status === 401) {
+      // Clear local storage
       localStorage.removeItem("token")
-      window.location.href = "/login"
+      localStorage.removeItem("user")
+
+      // Redirect to login page if not already there
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login"
+      }
     }
+
     return Promise.reject(error)
   },
 )

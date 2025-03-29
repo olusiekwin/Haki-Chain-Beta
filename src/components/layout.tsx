@@ -1,11 +1,13 @@
 "use client"
 
 import type React from "react"
+
 import { useEffect } from "react"
 import { useLocation } from "react-router-dom"
 import Header from "./header"
 import Footer from "./footer"
-import { EnvironmentIndicator } from "@/components/environment-indicator"
+import { Toaster } from "@/components/ui/toaster"
+import EnvironmentIndicator from "./environment-indicator"
 
 interface LayoutProps {
   children: React.ReactNode
@@ -24,6 +26,7 @@ export default function Layout({ children }: LayoutProps) {
       <Header />
       <main className="flex-1 pt-16 md:pt-20">{children}</main>
       <Footer />
+      <Toaster />
       <EnvironmentIndicator />
     </div>
   )

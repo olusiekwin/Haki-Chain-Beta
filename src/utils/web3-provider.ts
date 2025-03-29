@@ -1,103 +1,98 @@
-import Web3 from "web3"
-import type { AbiItem } from "web3-utils"
+import { ethers } from "ethers"
+import { config } from "./config"
 
-// Types
-export interface ContractConfig {
-  address: string
-  abi: AbiItem[]
-}
+// Web3 provider class for blockchain interactions
+class Web3Provider {
+  private provider: ethers.providers.Web3Provider | null = null
+  private signer: ethers.Signer | null = null
 
-// Web3 instance
-let web3Instance: Web3 | null = null
+  // Initialize provider
+  async initialize(): Promise<boolean> {
+    // Check if window.ethereum is available (MetaMask or other wallet)
+    if (window.ethereum) {
+      try {
+        // Create ethers provider
+        this.provider = new ethers.providers.Web3Provider(window.ethereum)
 
-// Contract instances cache
-const contractInstances: Record<string, any> = {}
+        // Request account access
+        await window.ethereum.request({ method: "eth_requestAccounts" })
 
-// Initialize web3
-export const initWeb3 = async (): Promise<Web3> => {
-  if (web3Instance) return web3Instance
+        // Get signer
+        this.signer = this.provider.getSigner()
 
-  // Check if MetaMask is installed
-  if (window.ethereum) {
-    try {
-      // Request account access
-      await window.ethereum.request({ method: "eth_requestAccounts" })
-      web3Instance = new Web3(window.ethereum)
-
-      // Handle chain changes
-      window.ethereum.on("chainChanged", () => {
-        window.location.reload()
-      })
-
-      // Handle account changes
-      window.ethereum.on("accountsChanged", () => {
-        window.location.reload()
-      })
-
-      return web3Instance
-    } catch (error) {
-      console.error("User denied account access", error)
-      throw new Error("User denied account access")
+        return true
+      } catch (error) {
+        console.error("Error initializing Web3Provider:", error)
+        return false
+      }
+    } else {
+      console.error("No Ethereum provider found. Please install MetaMask or another wallet.")
+      return false
     }
   }
-  // If no injected web3 instance is detected, fallback to a local provider
-  else {
-    const provider = new Web3.providers.HttpProvider("http://localhost:8545")
-    web3Instance = new Web3(provider)
-    return web3Instance
+
+  // Get current provider
+  getProvider(): ethers.providers.Web3Provider | null {
+    return this.provider
+  }
+
+  // Get current signer
+  getSigner(): ethers.Signer | null {
+    return this.signer
+  }
+
+  // Get current account address
+  async getAddress(): Promise<string | null> {
+    if (!this.signer) {
+      return null
+    }
+
+    try {
+      return await this.signer.getAddress()
+    } catch (error) {
+      console.error("Error getting address:", error)
+      return null
+    }
+  }
+
+  // Get contract instance
+  getContract(address: string, abi: any): ethers.Contract | null {
+    if (!this.provider || !address || !abi) {
+      return null
+    }
+
+    try {
+      return new ethers.Contract(address, abi, this.signer || this.provider)
+    } catch (error) {
+      console.error("Error creating contract instance:", error)
+      return null
+    }
+  }
+
+  // Check if connected to the correct network
+  async checkNetwork(): Promise<boolean> {
+    if (!this.provider) {
+      return false
+    }
+
+    try {
+      const network = await this.provider.getNetwork()
+      // This would need to be updated based on your target network
+      return network.name === config.blockchain.networkId
+    } catch (error) {
+      console.error("Error checking network:", error)
+      return false
+    }
+  }
+
+  // Disconnect provider
+  disconnect(): void {
+    this.provider = null
+    this.signer = null
   }
 }
 
-// Get contract instance
-export const getContract = (config: ContractConfig): any => {
-  if (contractInstances[config.address]) {
-    return contractInstances[config.address]
-  }
-
-  if (!web3Instance) {
-    throw new Error("Web3 not initialized")
-  }
-
-  const contract = new web3Instance.eth.Contract(config.abi, config.address)
-
-  contractInstances[config.address] = contract
-  return contract
-}
-
-// Get current account
-export const getCurrentAccount = async (): Promise<string> => {
-  if (!web3Instance) {
-    throw new Error("Web3 not initialized")
-  }
-
-  const accounts = await web3Instance.eth.getAccounts()
-  return accounts[0]
-}
-
-// Check if wallet is connected
-export const isWalletConnected = async (): Promise<boolean> => {
-  try {
-    const accounts = await web3Instance?.eth.getAccounts()
-    return !!accounts && accounts.length > 0
-  } catch (error) {
-    return false
-  }
-}
-
-// Get network ID
-export const getNetworkId = async (): Promise<number> => {
-  if (!web3Instance) {
-    throw new Error("Web3 not initialized")
-  }
-
-  return await web3Instance.eth.net.getId()
-}
-
-export default {
-  initWeb3,
-  getContract,
-  getCurrentAccount,
-  isWalletConnected,
-  getNetworkId,
-}
+// Create and export singleton instance
+const web3Provider = new Web3Provider()
+export default web3Provider
 

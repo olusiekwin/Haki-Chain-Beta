@@ -1,83 +1,73 @@
 from django.db import models
-from users.models import User
-from bounties.models import Bounty, Milestone
+from django.contrib.auth.models import User
+
+class WalletAddress(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='wallet')
+    address = models.CharField(max_length=255, unique=True)
+    is_verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username}'s wallet: {self.address}"
 
 class BlockchainTransaction(models.Model):
-    class Status(models.TextChoices):
-        PENDING = 'pending', 'Pending'
-        COMPLETED = 'completed', 'Completed'
-        FAILED = 'failed', 'Failed'
+    TRANSACTION_TYPES = (
+        ('token_transfer', 'Token Transfer'),
+        ('bounty_creation', 'Bounty Creation'),
+        ('bounty_acceptance', 'Bounty Acceptance'),
+        ('bounty_completion', 'Bounty Completion'),
+        ('marketplace_listing', 'Marketplace Listing'),
+        ('marketplace_purchase', 'Marketplace Purchase'),
+    )
     
-    class Type(models.TextChoices):
-        CREATE_ESCROW = 'create_escrow', 'Create Escrow'
-        RELEASE_MILESTONE = 'release_milestone', 'Release Milestone'
-        REFUND_ESCROW = 'refund_escrow', 'Refund Escrow'
-        MINT_TOKEN = 'mint_token', 'Mint Token'
-        TRANSFER_TOKEN = 'transfer_token', 'Transfer Token'
-        ADD_REVIEW = 'add_review', 'Add Review'
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('confirmed', 'Confirmed'),
+        ('failed', 'Failed'),
+    )
     
-    transaction_id = models.CharField(max_length=100, unique=True)
-    transaction_type = models.CharField(max_length=50, choices=Type.choices)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
-    
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='blockchain_transactions')
-    bounty = models.ForeignKey(Bounty, on_delete=models.CASCADE, related_name='blockchain_transactions', null=True, blank=True)
-    milestone = models.ForeignKey(Milestone, on_delete=models.CASCADE, related_name='blockchain_transactions', null=True, blank=True)
-    
-    data = models.JSONField(default=dict, blank=True)
-    error_message = models.TextField(blank=True)
-    
+    tx_hash = models.CharField(max_length=255, unique=True)
+    from_address = models.CharField(max_length=255)
+    to_address = models.CharField(max_length=255, null=True, blank=True)
+    amount = models.DecimalField(max_digits=18, decimal_places=8, null=True, blank=True)
+    transaction_type = models.CharField(max_length=50, choices=TRANSACTION_TYPES)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending')
+    bounty = models.ForeignKey('bounties.Bounty', on_delete=models.SET_NULL, null=True, blank=True, related_name='transactions')
+    marketplace_item = models.ForeignKey('marketplace.MarketplaceItem', on_delete=models.SET_NULL, null=True, blank=True, related_name='transactions')
+    data = models.JSONField(null=True, blank=True)
+    error_message = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
-        return f"{self.transaction_type} - {self.transaction_id} - {self.status}"
-
-class EscrowContract(models.Model):
-    bounty = models.OneToOneField(Bounty, on_delete=models.CASCADE, related_name='escrow_contract')
-    contract_id = models.CharField(max_length=100, unique=True)
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    released_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    
-    class Status(models.TextChoices):
-        ACTIVE = 'active', 'Active'
-        COMPLETED = 'completed', 'Completed'
-        REFUNDED = 'refunded', 'Refunded'
-    
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
-    
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    def __str__(self):
-        return f"Escrow for {self.bounty.title} - {self.contract_id}"
+        return f"{self.transaction_type} - {self.tx_hash[:10]}..."
 
 class TokenBalance(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='token_balance')
-    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    
-    updated_at = models.DateTimeField(auto_now=True)
+    balance = models.DecimalField(max_digits=18, decimal_places=8, default=0)
+    last_synced = models.DateTimeField(auto_now=True)
     
     def __str__(self):
-        return f"{self.user.email} - {self.balance} HAKI"
+        return f"{self.user.username}'s balance: {self.balance}"
 
 class TokenTransaction(models.Model):
-    class Type(models.TextChoices):
-        MINT = 'mint', 'Mint'
-        TRANSFER = 'transfer', 'Transfer'
-        BURN = 'burn', 'Burn'
+    TRANSACTION_TYPES = (
+        ('transfer', 'Transfer'),
+        ('reward', 'Reward'),
+        ('purchase', 'Purchase'),
+        ('refund', 'Refund'),
+    )
     
-    transaction_id = models.CharField(max_length=100, unique=True)
-    transaction_type = models.CharField(max_length=20, choices=Type.choices)
-    
-    from_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='sent_token_transactions')
-    to_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='received_token_transactions')
-    
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    bounty = models.ForeignKey(Bounty, on_delete=models.SET_NULL, null=True, blank=True, related_name='token_transactions')
-    
+    transaction_id = models.CharField(max_length=255, unique=True)
+    transaction_type = models.CharField(max_length=50, choices=TRANSACTION_TYPES)
+    from_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_transactions', null=True, blank=True)
+    to_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_transactions', null=True, blank=True)
+    amount = models.DecimalField(max_digits=18, decimal_places=8)
+    bounty = models.ForeignKey('bounties.Bounty', on_delete=models.SET_NULL, null=True, blank=True, related_name='token_transactions')
+    blockchain_tx = models.ForeignKey(BlockchainTransaction, on_delete=models.SET_NULL, null=True, blank=True, related_name='token_transactions')
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
-        return f"{self.transaction_type} - {self.amount} HAKI - {self.transaction_id}"
+        return f"{self.transaction_type} - {self.amount} tokens"
 

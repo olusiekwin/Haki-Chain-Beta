@@ -1,174 +1,174 @@
-import api from "../utils/api"
-import { BountyContractService } from "./web3/bounty-contract-service"
-import { TokenContractService } from "./web3/token-contract-service"
-import { useFeatures } from "../hooks/use-features"
+import apiService from "./api-service"
+import tokenContractService from "./web3/token-contract-service"
+import bountyContractService from "./web3/bounty-contract-service"
+import marketplaceContractService from "./web3/marketplace-contract-service"
+import web3Provider from "../utils/web3-provider"
+import { config } from "../utils/config"
 
-/**
- * HybridService handles the integration between Web2 (Django) and Web3 (Blockchain)
- * It provides methods that coordinate actions between both systems
- */
-export class HybridService {
-  private features
-
-  constructor() {
-    this.features = useFeatures()
+class HybridService {
+  // Check if blockchain features are enabled
+  isBlockchainEnabled(): boolean {
+    return config.features.blockchain
   }
 
-  /**
-   * Creates a bounty both on-chain and off-chain
-   * @param bountyData The bounty data to create
-   * @param walletAddress The user's wallet address
-   */
-  async createBounty(bountyData: any, walletAddress: string) {
+  // Check if AI assistant features are enabled
+  isAiAssistantEnabled(): boolean {
+    return config.features.aiAssistant
+  }
+
+  // Link wallet to user account
+  async linkWallet(token: string): Promise<{ success: boolean; error?: string }> {
     try {
-      // Step 1: Create bounty in Django backend (off-chain)
-      const offchainBounty = await api.post("/bounties/", bountyData)
-
-      // Step 2: If blockchain is enabled, create the bounty on-chain
-      if (this.features.isBlockchainEnabled && walletAddress) {
-        // Create on-chain bounty
-        const txHash = await BountyContractService.createBounty(
-          walletAddress,
-          bountyData.title,
-          bountyData.description,
-          bountyData.reward.toString(),
-        )
-
-        // Step 3: Update the off-chain bounty with blockchain reference
-        await api.patch(`/bounties/${offchainBounty.data.id}/`, {
-          blockchain_tx_hash: txHash,
-          blockchain_id: offchainBounty.data.id, // Using same ID for simplicity
-          is_on_chain: true,
-        })
-
-        return {
-          ...offchainBounty.data,
-          blockchain_tx_hash: txHash,
-          is_on_chain: true,
-        }
+      if (!this.isBlockchainEnabled()) {
+        throw new Error("Blockchain features are not enabled")
       }
 
-      return offchainBounty.data
-    } catch (error) {
+      // Get wallet address
+      const address = await web3Provider.getAddress()
+      if (!address) {
+        throw new Error("No wallet address found. Please connect your wallet first.")
+      }
+
+      // Link wallet to user account
+      const response = await apiService.linkWallet(token, address)
+
+      if (!response.success) {
+        throw new Error(response.error || "Failed to link wallet")
+      }
+
+      return { success: true }
+    } catch (error: any) {
+      console.error("Error linking wallet:", error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  // Create a bounty (both on-chain and off-chain)
+  async createBounty(
+    token: string,
+    bountyData: { title: string; description: string; reward: string },
+  ): Promise<{ success: boolean; bountyId?: number; txHash?: string; error?: string }> {
+    try {
+      if (!this.isBlockchainEnabled()) {
+        // If blockchain is disabled, just create off-chain bounty
+        const response = await apiService.createBounty(token, bountyData)
+
+        if (!response.success) {
+          throw new Error(response.error || "Failed to create bounty")
+        }
+
+        return { success: true, bountyId: response.data?.id }
+      }
+
+      // Get wallet address
+      const address = await web3Provider.getAddress()
+      if (!address) {
+        throw new Error("No wallet address found. Please connect your wallet first.")
+      }
+
+      // Create off-chain bounty first
+      const offChainResponse = await apiService.createBounty(token, bountyData)
+
+      if (!offChainResponse.success) {
+        throw new Error(offChainResponse.error || "Failed to create off-chain bounty")
+      }
+
+      const bountyId = offChainResponse.data?.id
+
+      // Create on-chain bounty
+      const txHash = await bountyContractService.createBounty(
+        address,
+        bountyData.title,
+        bountyData.description,
+        bountyData.reward,
+      )
+
+      // Sync on-chain bounty ID with off-chain bounty
+      if (bountyId) {
+        await apiService.syncBounty(token, bountyId, txHash)
+      }
+
+      return { success: true, bountyId, txHash }
+    } catch (error: any) {
       console.error("Error creating hybrid bounty:", error)
-      throw error
+      return { success: false, error: error.message }
     }
   }
 
-  /**
-   * Links a user's wallet address to their Django account
-   * @param walletAddress The wallet address to link
-   */
-  async linkWalletToAccount(walletAddress: string) {
+  // Create a marketplace listing (both on-chain and off-chain)
+  async createMarketplaceListing(
+    token: string,
+    itemData: { title: string; description: string; price: string; file: File },
+  ): Promise<{ success: boolean; itemId?: number; txHash?: string; error?: string }> {
     try {
-      const response = await api.post("/users/link-wallet/", {
-        wallet_address: walletAddress,
-      })
+      if (!this.isBlockchainEnabled()) {
+        // If blockchain is disabled, just create off-chain listing
+        const response = await apiService.createMarketplaceItem(token, itemData)
 
-      return response.data
-    } catch (error) {
-      console.error("Error linking wallet to account:", error)
-      throw error
-    }
-  }
-
-  /**
-   * Completes a bounty both on-chain and off-chain
-   * @param bountyId The ID of the bounty
-   * @param walletAddress The user's wallet address
-   */
-  async completeBounty(bountyId: string, walletAddress: string) {
-    try {
-      // Get bounty details from Django
-      const bounty = await api.get(`/bounties/${bountyId}/`)
-
-      // If bounty is on-chain and blockchain is enabled
-      if (bounty.data.is_on_chain && this.features.isBlockchainEnabled && walletAddress) {
-        // Complete bounty on-chain
-        const txHash = await BountyContractService.completeBounty(walletAddress, bounty.data.blockchain_id || bountyId)
-
-        // Update off-chain status
-        const updatedBounty = await api.patch(`/bounties/${bountyId}/`, {
-          status: "completed",
-          completion_tx_hash: txHash,
-        })
-
-        return updatedBounty.data
-      } else {
-        // Just update off-chain status
-        const updatedBounty = await api.patch(`/bounties/${bountyId}/`, {
-          status: "completed",
-        })
-
-        return updatedBounty.data
-      }
-    } catch (error) {
-      console.error("Error completing hybrid bounty:", error)
-      throw error
-    }
-  }
-
-  /**
-   * Transfers tokens between users, updating both on-chain and off-chain records
-   * @param toAddress Recipient wallet address
-   * @param amount Amount of tokens to transfer
-   * @param walletAddress Sender wallet address
-   */
-  async transferTokens(toAddress: string, amount: string, walletAddress: string) {
-    try {
-      if (this.features.isBlockchainEnabled && walletAddress) {
-        // Transfer tokens on-chain
-        const txHash = await TokenContractService.transfer(walletAddress, toAddress, amount)
-
-        // Record transaction in Django backend
-        const transaction = await api.post("/transactions/", {
-          from_address: walletAddress,
-          to_address: toAddress,
-          amount: amount,
-          tx_hash: txHash,
-          type: "token_transfer",
-        })
-
-        return {
-          ...transaction.data,
-          tx_hash: txHash,
+        if (!response.success) {
+          throw new Error(response.error || "Failed to create marketplace listing")
         }
-      } else {
-        throw new Error("Blockchain features are required for token transfers")
+
+        return { success: true, itemId: response.data?.id }
       }
-    } catch (error) {
-      console.error("Error transferring tokens:", error)
-      throw error
+
+      // Get wallet address
+      const address = await web3Provider.getAddress()
+      if (!address) {
+        throw new Error("No wallet address found. Please connect your wallet first.")
+      }
+
+      // Create off-chain listing first (this will handle file upload)
+      const offChainResponse = await apiService.createMarketplaceItem(token, itemData)
+
+      if (!offChainResponse.success) {
+        throw new Error(offChainResponse.error || "Failed to create off-chain marketplace listing")
+      }
+
+      const itemId = offChainResponse.data?.id
+      const fileUrl = offChainResponse.data?.file_url || ""
+
+      // Create on-chain listing
+      const txHash = await marketplaceContractService.listItem(
+        address,
+        itemData.title,
+        itemData.description,
+        itemData.price,
+        fileUrl,
+      )
+
+      // Sync on-chain listing ID with off-chain listing
+      if (itemId) {
+        await apiService.syncMarketplaceItem(token, itemId, txHash)
+      }
+
+      return { success: true, itemId, txHash }
+    } catch (error: any) {
+      console.error("Error creating hybrid marketplace listing:", error)
+      return { success: false, error: error.message }
     }
   }
 
-  /**
-   * Synchronizes on-chain data with off-chain database
-   * @param walletAddress The user's wallet address
-   */
-  async syncBlockchainData(walletAddress: string) {
+  // Get token balance for current user
+  async getTokenBalance(): Promise<{ success: boolean; balance?: string; error?: string }> {
     try {
-      if (!this.features.isBlockchainEnabled || !walletAddress) {
-        return { success: false, message: "Blockchain features not enabled" }
+      if (!this.isBlockchainEnabled()) {
+        throw new Error("Blockchain features are not enabled")
       }
 
-      // Get on-chain bounties
-      const onChainBounties = await BountyContractService.getAllBounties()
+      // Get wallet address
+      const address = await web3Provider.getAddress()
+      if (!address) {
+        throw new Error("No wallet address found. Please connect your wallet first.")
+      }
 
-      // Get on-chain token balance
-      const tokenBalance = await TokenContractService.balanceOf(walletAddress)
+      // Get token balance
+      const balance = await tokenContractService.balanceOf(address)
 
-      // Send data to Django for synchronization
-      const syncResult = await api.post("/blockchain/sync/", {
-        wallet_address: walletAddress,
-        bounties: onChainBounties,
-        token_balance: tokenBalance,
-      })
-
-      return syncResult.data
-    } catch (error) {
-      console.error("Error syncing blockchain data:", error)
-      throw error
+      return { success: true, balance }
+    } catch (error: any) {
+      console.error("Error getting token balance:", error)
+      return { success: false, error: error.message }
     }
   }
 }

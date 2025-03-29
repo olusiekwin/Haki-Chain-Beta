@@ -1,135 +1,73 @@
 "use client"
 
 import type React from "react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useApp } from "../../context/app-context"
-import { useHybrid } from "../../hooks/use-hybrid"
-import { Button } from "../ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card"
-import { Alert, AlertDescription, AlertTitle } from "../ui/alert"
-import { AlertCircle, CheckCircle, Wallet } from "lucide-react"
+import { config } from "../../utils/config"
 
-export const WalletConnector: React.FC = () => {
-  const { user, wallet, isAuthenticated } = useApp()
-  const { linkWallet, isLoading, error } = useHybrid()
-  const [isLinked, setIsLinked] = useState(false)
-  const [linkSuccess, setLinkSuccess] = useState(false)
+const WalletConnector: React.FC = () => {
+  const { wallet } = useApp()
+  const [isConnecting, setIsConnecting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  // Check if wallet is already linked
-  useEffect(() => {
-    if (isAuthenticated && user && user.wallet_address) {
-      setIsLinked(true)
-    } else {
-      setIsLinked(false)
-    }
-  }, [isAuthenticated, user])
+  const handleConnect = async () => {
+    setIsConnecting(true)
+    setError(null)
 
-  // Handle wallet connection
-  const handleConnectWallet = async () => {
     try {
-      await wallet.connect()
+      const connected = await wallet.connect()
+      if (!connected) {
+        setError("Failed to connect wallet. Please try again.")
+      }
     } catch (err) {
-      console.error("Failed to connect wallet:", err)
-    }
-  }
-
-  // Handle wallet linking to account
-  const handleLinkWallet = async () => {
-    try {
-      await linkWallet()
-      setLinkSuccess(true)
-      setIsLinked(true)
-
-      // Reset success message after 3 seconds
-      setTimeout(() => {
-        setLinkSuccess(false)
-      }, 3000)
-    } catch (err) {
-      console.error("Failed to link wallet:", err)
+      setError("An error occurred while connecting to your wallet.")
+      console.error(err)
+    } finally {
+      setIsConnecting(false)
     }
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center">
-          <Wallet className="mr-2" size={20} />
-          Wallet Connection
-        </CardTitle>
-        <CardDescription>Connect your blockchain wallet to access HakiChain features</CardDescription>
-      </CardHeader>
+    <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
+      <h3 className="text-lg font-semibold mb-2">Connect Your Wallet</h3>
+      <p className="text-sm text-gray-600 mb-4">
+        Connect your Hedera wallet to access blockchain features on HakiChain. Currently connecting to{" "}
+        <span className="font-medium">{config.blockchain.networkId}</span>.
+      </p>
 
-      <CardContent>
-        {error && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error.message}</AlertDescription>
-          </Alert>
-        )}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm">{error}</div>
+      )}
 
-        {linkSuccess && (
-          <Alert className="mb-4 bg-green-50 text-green-800 border-green-200">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertTitle>Success</AlertTitle>
-            <AlertDescription>Wallet successfully linked to your account!</AlertDescription>
-          </Alert>
-        )}
-
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="font-medium">Wallet Status:</span>
-            <span
-              className={`px-2 py-1 rounded text-sm ${wallet.isConnected ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}
+      <button
+        onClick={handleConnect}
+        disabled={isConnecting}
+        className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+      >
+        {isConnecting ? (
+          <span className="flex items-center justify-center">
+            <svg
+              className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
             >
-              {wallet.isConnected ? "Connected" : "Disconnected"}
-            </span>
-          </div>
-
-          {wallet.isConnected && (
-            <div className="flex items-center justify-between">
-              <span className="font-medium">Wallet Address:</span>
-              <span className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">
-                {wallet.address
-                  ? `${wallet.address.substring(0, 6)}...${wallet.address.substring(wallet.address.length - 4)}`
-                  : "Unknown"}
-              </span>
-            </div>
-          )}
-
-          {isAuthenticated && wallet.isConnected && (
-            <div className="flex items-center justify-between">
-              <span className="font-medium">Account Linking:</span>
-              <span
-                className={`px-2 py-1 rounded text-sm ${isLinked ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}
-              >
-                {isLinked ? "Linked" : "Not Linked"}
-              </span>
-            </div>
-          )}
-        </div>
-      </CardContent>
-
-      <CardFooter className="flex flex-col space-y-2">
-        {!wallet.isConnected ? (
-          <Button onClick={handleConnectWallet} className="w-full" disabled={isLoading}>
-            Connect Wallet
-          </Button>
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+            Connecting...
+          </span>
         ) : (
-          <>
-            <Button onClick={() => wallet.disconnect()} variant="outline" className="w-full" disabled={isLoading}>
-              Disconnect Wallet
-            </Button>
-
-            {isAuthenticated && !isLinked && (
-              <Button onClick={handleLinkWallet} className="w-full" disabled={isLoading}>
-                {isLoading ? "Linking..." : "Link Wallet to Account"}
-              </Button>
-            )}
-          </>
+          "Connect Wallet"
         )}
-      </CardFooter>
-    </Card>
+      </button>
+    </div>
   )
 }
+
+export default WalletConnector
 

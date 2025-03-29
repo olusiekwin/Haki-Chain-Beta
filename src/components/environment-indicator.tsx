@@ -1,24 +1,49 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { AlertCircle, X } from "lucide-react"
 
-export function EnvironmentIndicator() {
-  const [environment, setEnvironment] = useState<string>("development")
+export default function EnvironmentIndicator() {
+  const [isVisible, setIsVisible] = useState(true)
+  const environment = process.env.NODE_ENV || "development"
+  const network = process.env.HEDERA_NETWORK || "testnet"
 
-  useEffect(() => {
-    // In a real app, you would get this from environment variables
-    // For now, we'll just use development as default
-    setEnvironment("development")
-  }, [])
-
-  if (environment === "production") {
+  // Hide in production
+  if (environment === "production" && network === "mainnet") {
     return null
   }
 
   return (
-    <div className="fixed bottom-2 right-2 z-50 px-2 py-1 text-xs font-medium rounded bg-yellow-500 text-black">
-      {environment}
-    </div>
+    <AnimatePresence>
+      {isVisible && (
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 50 }}
+          className="fixed bottom-4 right-4 z-50"
+        >
+          <div className="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-md shadow-lg bg-background border border-border">
+            <AlertCircle className="w-4 h-4 text-yellow-500" />
+            <div>
+              <span className="uppercase">{environment}</span>
+              {network && (
+                <span className="ml-1">
+                  (<span className="text-primary">{network}</span>)
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => setIsVisible(false)}
+              className="p-1 ml-2 rounded-full hover:bg-muted"
+              aria-label="Close"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 

@@ -116,7 +116,7 @@ export const BountyDetails: React.FC<BountyDetailsProps> = ({ bountyId, onStatus
                     : "bg-gray-100 text-gray-800 hover:bg-gray-100"
             }
           >
-            {bounty.status.charAt(0).toUpperCase() + bounty.status.slice(1)}
+            {bounty.status.charAt(0).toUpperCase() + bounty.status.slice(1).replace("_", " ")}
           </Badge>
         </div>
       </CardHeader>
@@ -160,7 +160,7 @@ export const BountyDetails: React.FC<BountyDetailsProps> = ({ bountyId, onStatus
             <div className="flex items-center text-sm text-gray-600">
               <Clock className="mr-2 h-4 w-4" />
               <span className="font-medium">Status:</span>
-              <span className="ml-2 capitalize">{bounty.status}</span>
+              <span className="ml-2 capitalize">{bounty.status.replace("_", " ")}</span>
             </div>
           </div>
 
